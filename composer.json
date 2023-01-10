@@ -4,7 +4,6 @@
     "type": "symfony-bundle",
     "keywords": [
         "api-platform",
-        "audit",
         "php",
         "symfony",
         "symfony-bundle"
@@ -22,8 +21,7 @@
         "symfony/http-kernel": ">=6.2",
         "symfony/security-bundle": ">=6.2",
         "symfony/translation": ">=6.2",
-        "whitedigital-eu/entity-resource-mapper-bundle": ">=0.16.0",
-        "ext-mbstring": "*"
+        "whitedigital-eu/entity-resource-mapper-bundle": ">=0.16.0"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "*",
@@ -33,6 +31,11 @@
     "autoload": {
         "psr-4": {
             "WhiteDigital\\SettingsBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "WhiteDigital\\SettingsBundle\\Tests\\": "tests/"
         }
     },
     "minimum-stability": "dev",
