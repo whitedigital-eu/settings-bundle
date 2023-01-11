@@ -1,16 +1,19 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types = 1);
 
 namespace WhiteDigital\SettingsBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use WhiteDigital\EntityResourceMapper\Entity\BaseEntity;
+use WhiteDigital\SettingsBundle\Contracts\SettingsEntityInterface;
 use WhiteDigital\SettingsBundle\Repository\SettingsRepository;
 
 #[ORM\Entity(repositoryClass: SettingsRepository::class)]
 #[ORM\Index(fields: ['lastModifiedBy'])]
 #[ORM\Index(fields: ['createdAt'])]
 #[ORM\Index(fields: ['updatedAt'])]
-class Settings extends BaseEntity
+class Settings extends BaseEntity implements SettingsEntityInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]

@@ -6,32 +6,25 @@ use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
-use WhiteDigital\Audit\Contracts\AuditType;
 
 use function array_merge;
 use function array_merge_recursive;
 
 class SettingsBundle extends AbstractBundle
 {
-    protected string $extensionAlias = 'whitedigital';
+    protected string $extensionAlias = 'settings_bundle';
 
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        $audit = $config['audit'] ?? [];
+        $bundleConfig = $config['settings_bundle'] ?? [];
 
-        if (true === $audit['enabled'] ?? false) {
-            $this->validate($audit);
+        if (true === $bundleConfig['enabled'] ?? false) {
+            $this->validate($bundleConfig);
 
-            $builder->setParameter('whitedigital.audit.enabled', $audit['enabled']);
-            $builder->setParameter('whitedigital.audit.audit_entity_manager', $audit['audit_entity_manager']);
-            $builder->setParameter('whitedigital.audit.excluded_response_codes', $audit['excluded']['response_codes'] ?? [Response::HTTP_NOT_FOUND]);
-            $builder->setParameter('whitedigital.audit.audit_types', array_merge($audit['additional_audit_types'] ?? [], AuditType::AUDIT_TYPES));
-            $builder->setParameter('whitedigital.audit.excluded_paths', $audit['excluded']['paths'] ?? []);
-            $builder->setParameter('whitedigital.audit.excluded_routes', $audit['excluded']['routes'] ?? []);
+            $builder->setParameter('whitedigital.settings_bundle.enabled', $bundleConfig['enabled']);
 
-            if (true === $audit['custom_configuration'] ?? false) {
+            if (true === $bundleConfig['custom_configuration'] ?? false) {
                 $container->import('../config/void_audit.php');
             } else {
                 $container->import('../config/audit_service.php');
