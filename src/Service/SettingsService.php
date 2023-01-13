@@ -3,27 +3,39 @@
 namespace WhiteDigital\SettingsBundle\Service;
 
 use ApiPlatform\Api\IriConverterInterface;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
+use ReflectionClass;
+use ReflectionException;
+use ReflectionNamedType;
+use ReflectionProperty;
+use RuntimeException;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\TaggedLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Serializer;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use WhiteDigital\EntityResourceMapper\Resource\BaseResource;
+use WhiteDigital\SettingsBundle\Contracts\SettingsEntityInterface;
 use WhiteDigital\SettingsBundle\Contracts\SettingsInterface;
 use WhiteDigital\SettingsBundle\Contracts\SettingsServiceInterface;
 use WhiteDigital\SettingsBundle\Entity\Settings;
 use WhiteDigital\SettingsBundle\Enum\SettingsStoreTypeEnum;
 use WhiteDigital\SettingsBundle\Exception\SettingsException;
+use WhiteDigital\SettingsBundle\Repository\SettingsRepository;
+use WhiteDigital\SettingsBundle\SettingsStore\SymfonySerializableSettingsStore;
 
 class SettingsService implements SettingsServiceInterface
 {
     public function __construct(
         private readonly EntityManagerInterface                                           $manager,
+        private readonly SettingsRepository                                               $settingsRepository,
         private readonly Security                                                         $security,
         private readonly TagAwareCacheInterface                                           $cache,
         private readonly IriConverterInterface                                            $iriConverter,
@@ -44,33 +56,34 @@ class SettingsService implements SettingsServiceInterface
     public function getSettings(string $class): SettingsInterface
     {
         try {
+            //Check if asked setting is configured as settings_bundle.settings
+            //Check cache for value (get tag aware cache from container or if cache is not configured, (1. create cache configuration in compile via bundle, 2. do not use cache)
+            //Check database for value
+            //Return default
             $settingsClass = $this->settingsList->get($class);
 
-            $reflection = new \ReflectionClass($settingsClass);
+            $reflection = new ReflectionClass($settingsClass);
             $className = $reflection->getShortName();
 
-            foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+
+            //per-property cache items vs per-setting-class cache item
+            foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
                 $propertyName = $property->getName();
                 // 1. Use cached value or 2. retrieve from database, or 3. use default property value
                 $settingsClass->{$propertyName} = $this->cache->get("$className.$propertyName",
                     function (ItemInterface $item) use ($className, $propertyName, $property, $settingsClass) {
                         $item->tag($className);
-                        $settingsRepository = $this->manager->getRepository(Settings::class);
-                        $data = $settingsRepository->findOneBy(['class' => $className]);
-                        if (null !== $data) {
-                            $values = $data->getStore();
-                            if (array_key_exists($propertyName, $values)) {
-                                return $this->settingsStoreToValue($values[$propertyName]);
-                            }
-                            $values[$propertyName] = $this->valueToSettingsStore($property, $settingsClass);
-                            $data->setStore($values);
+                        $existingSettingsRecord = $this->settingsRepository->findByClassNameOrNull($className);
+                        if (null !== $existingSettingsRecord) {
+                            return $this->returnPropertyValueFromDatabase($existingSettingsRecord, $property, $settingsClass);
                         } else {
+                            return $this->returnPropertyValueFromDefaults();
                             /** @var ?UserInterface $currentUser */
                             $currentUser = $this->security->getUser();
-                            $data = (new Settings())->setLastModifiedBy($currentUser->getUserIdentifier())
+                            $existingSettingsRecord = (new Settings())->setLastModifiedBy($currentUser->getUserIdentifier())
                                 ->setClass($className)
                                 ->setStore([$propertyName => $this->valueToSettingsStore($property, $settingsClass)]);
-                            $this->manager->persist($data);
+                            $this->manager->persist($existingSettingsRecord);
                         }
 
                         $this->manager->flush();
@@ -80,7 +93,7 @@ class SettingsService implements SettingsServiceInterface
             }
 
             return $settingsClass;
-        } catch (ContainerExceptionInterface|InvalidArgumentException|NotFoundExceptionInterface|\ReflectionException $exception) {
+        } catch (ContainerExceptionInterface|InvalidArgumentException|NotFoundExceptionInterface|ReflectionException $exception) {
             throw new SettingsException($exception->getMessage());
         }
     }
@@ -95,7 +108,7 @@ class SettingsService implements SettingsServiceInterface
     public function invalidateCache(string $class): void
     {
         if (class_exists($class)) {
-            $reflect = new \ReflectionClass($class);
+            $reflect = new ReflectionClass($class);
             $tagName = $reflect->getShortName();
         } else {
             $tagName = $class;
@@ -125,7 +138,7 @@ class SettingsService implements SettingsServiceInterface
         return basename(str_replace('\\', '/', $fqcn));
     }
 
-    private function settingsStoreToValue(SettingsStore $store): string|int|BaseResource|\DateTimeImmutable|null
+    private function settingsStoreToValue(SettingsStore $store): string|int|BaseResource|DateTimeImmutable|null
     {
         return match ($store->getType()) {
             SettingsStoreTypeEnum::String, SettingsStoreTypeEnum::Integer => $store->getValue(),
@@ -135,10 +148,10 @@ class SettingsService implements SettingsServiceInterface
         };
     }
 
-    private function valueToSettingsStore(\ReflectionProperty $reflectionProperty, object $object): SettingsStore
+    private function valueToSettingsStore(ReflectionProperty $reflectionProperty, object $object): SettingsStore
     {
-        if (!$reflectionProperty->getType() instanceof \ReflectionNamedType) {
-            throw new \RuntimeException('Type is not ReflectionNamedType');
+        if (!$reflectionProperty->getType() instanceof ReflectionNamedType) {
+            throw new RuntimeException('Type is not ReflectionNamedType');
         }
 
         return match ($reflectionProperty->getType()->getName()) {
@@ -159,7 +172,7 @@ class SettingsService implements SettingsServiceInterface
         };
     }
 
-    private function returnIsoDate(?\DateTimeImmutable $datetime): ?string
+    private function returnIsoDate(?DateTimeImmutable $datetime): ?string
     {
         return $datetime?->format('Y-m-d');
     }
@@ -167,21 +180,21 @@ class SettingsService implements SettingsServiceInterface
     /**
      * @param string|null $isoDate in format Y-m-d
      */
-    private function returnDateTimeObject(?string $isoDate): ?\DateTimeImmutable
+    private function returnDateTimeObject(?string $isoDate): ?DateTimeImmutable
     {
         if (empty($isoDate)) {
             return null;
         }
         try {
-            $date = new \DateTimeImmutable($isoDate);
-        } catch (\Exception $exception) {
-            throw new \RuntimeException('Date format invalid. Expected Y-m-d.');
+            $date = new DateTimeImmutable($isoDate);
+        } catch (Exception $exception) {
+            throw new RuntimeException('Date format invalid. Expected Y-m-d.');
         }
 
         return $date;
     }
 
-    private function extractLabelFromComment(\ReflectionProperty $reflectionProperty): ?string
+    private function extractLabelFromComment(ReflectionProperty $reflectionProperty): ?string
     {
         if ($label = $reflectionProperty->getDocComment()) {
             preg_match('/^\/\*\*(.+)\*\/$/', $label, $output);
@@ -189,6 +202,18 @@ class SettingsService implements SettingsServiceInterface
         }
 
         return null;
+    }
+
+    private function returnPropertyValueFromDatabase(SettingsEntityInterface $existingSettingsRecord, ReflectionProperty $property, SettingsInterface $settingsClass)
+    {
+        $values = $existingSettingsRecord->getStore();
+        if (array_key_exists($property->getName(), $values)) {
+            $store = new SymfonySerializableSettingsStore(new Serializer()); //todo: use service locator to find all stores that impolement interface
+            return $store->getRuntimeValue($values[$property->getName()], $property->getType()->getName())
+            return $this->settingsStoreToValue($values[$property->getName()]);
+        }
+        $values[$property->getName()] = $this->valueToSettingsStore($property, $settingsClass);
+        $existingSettingsRecord->setStore($values);
     }
 
 }

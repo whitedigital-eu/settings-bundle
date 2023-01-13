@@ -4,6 +4,7 @@ namespace WhiteDigital\SettingsBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use RuntimeException;
 use WhiteDigital\SettingsBundle\Entity\Settings;
 
 /**
@@ -19,18 +20,24 @@ class SettingsRepository extends ServiceEntityRepository
         parent::__construct($registry, Settings::class);
     }
 
-    public function findByClassName(string $className): Settings
+    public function findByClassNameOrNull(string $className): ?Settings
     {
         $result = $this->createQueryBuilder('s')
             ->where('s.class = :cn')
             ->setParameter('cn', $className)
             ->getQuery()
             ->getResult();
-        if (0 === count($result)) {
-            throw new \RuntimeException(sprintf('Settings with class %s not found. You should probably regenerate all settings store by calling /api/settings endpoint.', $className));
+        return $result[0];
+    }
+
+    public function findByClassName(string $className): Settings
+    {
+        $result = $this->findByClassNameOrNull($className);
+        if (!$result) {
+            throw new RuntimeException(sprintf('Settings with class %s not found. You should probably regenerate all settings store by calling /api/settings endpoint.', $className));
         }
 
-        return $result[0];
+        return $result;
     }
 
     public function save(Settings $entity, bool $flush = false): void

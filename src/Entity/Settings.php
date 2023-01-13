@@ -23,7 +23,7 @@ class Settings extends BaseEntity implements SettingsEntityInterface
     #[ORM\Column(length: 255, unique: true)]
     private ?string $className = null;
 
-    private ?array $data = null;
+    private ?array $store = null;
 
     #[ORM\Column(length: 255)]
     private ?string $lastModifiedBy = null;
@@ -45,14 +45,14 @@ class Settings extends BaseEntity implements SettingsEntityInterface
         return $this;
     }
 
-    public function getData(): ?array
+    public function getStore(): ?array
     {
-        return $this->data;
+        return $this->store;
     }
 
-    public function setData(?array $data): self
+    public function setStore(?array $store): self
     {
-        $this->data = $data;
+        $this->store = $store;
 
         return $this;
     }
