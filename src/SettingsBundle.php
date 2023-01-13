@@ -8,6 +8,8 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 
 class SettingsBundle extends AbstractBundle
 {
+    protected string $extensionAlias = 'settings_bundle';
+
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $container->import('../config/services.php');
