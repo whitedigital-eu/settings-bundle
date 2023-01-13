@@ -48,10 +48,17 @@ class SettingsService
             $reflect = new \ReflectionClass($settingsService);
             foreach ($reflect->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
                 $propertyName = $property->getName();
+                $shortName = self::getShortName($class);
                 // 1. Use cached value or 2. retrieve from database, or 3. use default property value
-                $settingsService->{$propertyName} = $this->cache->get("$class.$propertyName",
-                    function (ItemInterface $item) use ($class, $propertyName, $property, $settingsService) {
-                        $item->tag($class);
+                $settingsService->{$propertyName} = $this->cache->get("$shortName.$propertyName",
+                    function (ItemInterface $item) use (
+                        $class,
+                        $propertyName,
+                        $property,
+                        $settingsService,
+                        $shortName
+                    ) {
+                        $item->tag($shortName);
                         $data = $this->settingsRepository->findByClassNameOrNull($class);
                         if (null !== $data) {
                             $values = $data->getStore();
@@ -90,7 +97,7 @@ class SettingsService
      */
     public function invalidateCache(string $class): void
     {
-        $this->cache->invalidateTags([$class]);
+        $this->cache->invalidateTags([self::getShortName($class)]);
     }
 
     /**
@@ -115,10 +122,10 @@ class SettingsService
         return basename(str_replace('\\', '/', $fqcn));
     }
 
-    private function settingsStoreToValue(SettingsStore $store): string|int|BaseResource|\DateTimeImmutable|null|float
+    private function settingsStoreToValue(SettingsStore $store): string|int|BaseResource|\DateTimeImmutable|null|float|array
     {
         return match ($store->getType()) {
-            SettingsStoreTypeEnum::String, SettingsStoreTypeEnum::Integer, SettingsStoreTypeEnum::Float => $store->getValue(),
+            SettingsStoreTypeEnum::String, SettingsStoreTypeEnum::Integer, SettingsStoreTypeEnum::Float, SettingsStoreTypeEnum::Array => $store->getValue(),
             SettingsStoreTypeEnum::Date => $this->returnDateTimeObject($store->getValue()),
             SettingsStoreTypeEnum::Resource => $store->getValue()
                 ? $this->iriConverter->getResourceFromIri($store->getValue()) : null,
@@ -142,6 +149,9 @@ class SettingsService
                 ->setValue($this->returnIsoDate($reflectionProperty->getValue($object)))
                 ->setLabel($this->extractLabelFromComment($reflectionProperty)),
             'float' => (new SettingsStore())->setType(SettingsStoreTypeEnum::Float)
+                ->setValue($reflectionProperty->getValue($object))
+                ->setLabel($this->extractLabelFromComment($reflectionProperty)),
+            'array' => (new SettingsStore())->setType(SettingsStoreTypeEnum::Array)
                 ->setValue($reflectionProperty->getValue($object))
                 ->setLabel($this->extractLabelFromComment($reflectionProperty)),
             default => (new SettingsStore())->setType(SettingsStoreTypeEnum::Resource)

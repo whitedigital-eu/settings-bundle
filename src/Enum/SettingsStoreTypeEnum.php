@@ -11,4 +11,5 @@ enum SettingsStoreTypeEnum: string
     case Resource = 'resource';
     case Date = 'date';
     case Float = 'float';
+    case Array = 'array';
 }

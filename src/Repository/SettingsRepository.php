@@ -3,6 +3,7 @@
 namespace WhiteDigital\SettingsBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\Persistence\ManagerRegistry;
 use WhiteDigital\SettingsBundle\Entity\Settings;
 
@@ -19,14 +20,16 @@ class SettingsRepository extends ServiceEntityRepository
         parent::__construct($registry, Settings::class);
     }
 
+    /**
+     * @throws NonUniqueResultException
+     */
     public function findByClassNameOrNull(string $className): ?Settings
     {
-        $result = $this->createQueryBuilder('s')
+        return $this->createQueryBuilder('s')
             ->where('s.class = :cn')
             ->setParameter('cn', $className)
             ->getQuery()
-            ->getResult();
-        return $result[0];
+            ->getOneOrNullResult();
     }
 
     public function findByClassName(string $className): Settings

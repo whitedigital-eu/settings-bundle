@@ -12,7 +12,6 @@ class SettingsBundle extends AbstractBundle
 
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        $container->import('../config/settings_bundle.php');
         $container->import('../config/services.php');
     }
 }

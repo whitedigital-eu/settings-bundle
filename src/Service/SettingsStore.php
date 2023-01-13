@@ -10,7 +10,7 @@ class SettingsStore implements \JsonSerializable
 {
     private SettingsStoreTypeEnum $type;
 
-    private string|int|null|float $value;
+    private string|int|null|float|array $value;
 
     private ?string $resourceClass = null;
 
@@ -42,6 +42,7 @@ class SettingsStore implements \JsonSerializable
                 'resource' => SettingsStoreTypeEnum::Resource,
                 'date' => SettingsStoreTypeEnum::Date,
                 'float' => SettingsStoreTypeEnum::Float,
+                'array' => SettingsStoreTypeEnum::Array,
                 default => throw new \RuntimeException('Invalid type for SettingsStore: ' . $type),
             };
         } else {
@@ -51,12 +52,12 @@ class SettingsStore implements \JsonSerializable
         return $this;
     }
 
-    public function getValue(): int|string|null|float
+    public function getValue(): int|string|null|float|array
     {
         return $this->value;
     }
 
-    public function setValue(int|string|null|float $value): self
+    public function setValue(int|string|null|float|array $value): self
     {
         $this->value = $value;
 
