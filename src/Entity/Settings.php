@@ -6,14 +6,14 @@ namespace WhiteDigital\SettingsBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use WhiteDigital\EntityResourceMapper\Entity\BaseEntity;
-use WhiteDigital\SettingsBundle\Contracts\SettingsEntityInterface;
 use WhiteDigital\SettingsBundle\Repository\SettingsRepository;
+use WhiteDigital\SettingsBundle\Service\SettingsStore;
 
 #[ORM\Entity(repositoryClass: SettingsRepository::class)]
 #[ORM\Index(fields: ['lastModifiedBy'])]
 #[ORM\Index(fields: ['createdAt'])]
 #[ORM\Index(fields: ['updatedAt'])]
-class Settings extends BaseEntity implements SettingsEntityInterface
+class Settings extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
@@ -21,11 +21,13 @@ class Settings extends BaseEntity implements SettingsEntityInterface
     private ?int $id = null;
 
     #[ORM\Column(length: 255, unique: true)]
-    private ?string $className = null;
+    private ?string $class = null;
 
-    private ?array $data = null;
+    /** @var array<string, SettingsStore|array<string, mixed>> */
+    #[ORM\Column(nullable: true)]
+    private ?array $store = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $lastModifiedBy = null;
 
     public function getId(): ?int
@@ -33,26 +35,36 @@ class Settings extends BaseEntity implements SettingsEntityInterface
         return $this->id;
     }
 
-    public function getClassName(): ?string
+    public function getClass(): ?string
     {
-        return $this->className;
+        return $this->class;
     }
 
-    public function setClassName(string $className): self
+    public function setClass(string $class): self
     {
-        $this->className = $className;
+        $this->class = $class;
 
         return $this;
     }
 
-    public function getData(): ?array
+    /** @return  array<string, SettingsStore> */
+    public function getStore(): array
     {
-        return $this->data;
+        return array_map(static function ($value) {
+            if ($value instanceof SettingsStore) {
+                return $value;
+            }
+
+            return SettingsStore::createFromArray($value);
+        }, $this->store);
     }
 
-    public function setData(?array $data): self
+    /**
+     * @param array<string, SettingsStore> $store
+     */
+    public function setStore(array $store): self
     {
-        $this->data = $data;
+        $this->store = $store;
 
         return $this;
     }

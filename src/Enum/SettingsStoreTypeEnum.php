@@ -10,4 +10,5 @@ enum SettingsStoreTypeEnum: string
     case String = 'string';
     case Resource = 'resource';
     case Date = 'date';
+    case Float = 'float';
 }

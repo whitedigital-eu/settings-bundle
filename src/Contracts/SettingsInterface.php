@@ -9,5 +9,4 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 #[AutoconfigureTag(name: 'settings_bundle.settings')]
 interface SettingsInterface
 {
-
 }
