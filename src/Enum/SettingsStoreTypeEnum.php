@@ -12,4 +12,5 @@ enum SettingsStoreTypeEnum: string
     case Date = 'date';
     case Float = 'float';
     case Array = 'array';
+    case Boolean = 'boolean';
 }
