@@ -122,10 +122,10 @@ class SettingsService
         return basename(str_replace('\\', '/', $fqcn));
     }
 
-    private function settingsStoreToValue(SettingsStore $store): string|int|BaseResource|\DateTimeImmutable|null|float|array
+    private function settingsStoreToValue(SettingsStore $store): string|int|BaseResource|\DateTimeImmutable|null|float|array|bool
     {
         return match ($store->getType()) {
-            SettingsStoreTypeEnum::String, SettingsStoreTypeEnum::Integer, SettingsStoreTypeEnum::Float, SettingsStoreTypeEnum::Array => $store->getValue(),
+            SettingsStoreTypeEnum::String, SettingsStoreTypeEnum::Integer, SettingsStoreTypeEnum::Float, SettingsStoreTypeEnum::Array, SettingsStoreTypeEnum::Boolean => $store->getValue(),
             SettingsStoreTypeEnum::Date => $this->returnDateTimeObject($store->getValue()),
             SettingsStoreTypeEnum::Resource => $store->getValue()
                 ? $this->iriConverter->getResourceFromIri($store->getValue()) : null,
