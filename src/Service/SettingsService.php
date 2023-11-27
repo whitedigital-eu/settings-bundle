@@ -154,6 +154,9 @@ class SettingsService
             'array' => (new SettingsStore())->setType(SettingsStoreTypeEnum::Array)
                 ->setValue($reflectionProperty->getValue($object))
                 ->setLabel($this->extractLabelFromComment($reflectionProperty)),
+            'bool' => (new SettingsStore())->setType(SettingsStoreTypeEnum::Boolean)
+                ->setValue($reflectionProperty->getValue($object))
+                ->setLabel($this->extractLabelFromComment($reflectionProperty)),
             default => (new SettingsStore())->setType(SettingsStoreTypeEnum::Resource)
                 ->setValue($reflectionProperty->getValue($object)
                     ? $this->iriConverter->getIriFromResource($reflectionProperty->getValue($object)) : null)
